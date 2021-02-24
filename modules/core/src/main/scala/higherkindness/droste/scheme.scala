@@ -10,6 +10,7 @@ import cats.syntax.flatMap._
 import cats.syntax.traverse._
 
 import implicits.composedFunctor._
+import higherkindness.droste.data.stream
 
 /**
   * @groupname refolds Refolds
@@ -297,5 +298,21 @@ private[droste] sealed trait SchemeHyloPorcelain {
       coalgebra: CoalgebraM[M, F, A]
   ): A => M[B] =
     kernel.hyloM(algebra.run, coalgebra.run)
+
+  def elgot[F[_]: Functor, A, B](
+      algebra: Algebra[F, B],
+      coalgebra: A => Either[B, F[A]]
+  ): A => B =
+    new (A => B) {
+      def apply(a: A): B = coalgebra(a).fold(identity, fa => algebra(fa.map(this)))
+    }
+
+  def coelgot[F[_]: Functor, A, B](
+      algebra: (A, F[B]) => B,
+      coalgebra: Coalgebra[F, A]
+  ): A => B =
+    new (A => B) {
+      def apply(a: A): B = algebra(a, coalgebra(a).map(this))
+    }
 
 }
